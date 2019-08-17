@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-
 import tensorflow as tf
 from tensorflow.keras import Model
 import datetime
+import os
 
 
 class Model(Model):
@@ -79,30 +79,41 @@ train_log_dir = 'logs/gradient_tape/' + current_time + '/train'
 test_log_dir = 'logs/gradient_tape/' + current_time + '/test'
 train_summary_writer = tf.summary.create_file_writer(train_log_dir)
 test_summary_writer = tf.summary.create_file_writer(test_log_dir)
+checkpoint_path = "checkpoints/cp-{epoch:04d}.ckpt"
+checkpoint_dir = os.path.dirname(checkpoint_path)
 
 EPOCHS = 5
 
 for epoch in range(EPOCHS):
+	# Train
 	for images, labels in train_ds:
 		train_step(images, labels)
+	# Record train info
 	with train_summary_writer.as_default():
 		tf.summary.scalar('loss', train_loss.result(), step=epoch)
 		tf.summary.scalar('accuracy', train_accuracy.result(), step=epoch)
 
-
+	# Test
 	for test_images, test_labels in test_ds:
 		test_step(test_images, test_labels)
+	# Record test info
 	with test_summary_writer.as_default():
 		tf.summary.scalar('loss', test_loss.result(), step=epoch)
 		tf.summary.scalar('accuracy', test_accuracy.result(), step=epoch)
 
-
 	template = 'Epoch {}, Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}'
-	print(template.format(epoch+1,
-							train_loss.result(),
-							train_accuracy.result()*100,
-							test_loss.result(),
-							test_accuracy.result()*100))
+	print(
+		template.format(
+			epoch + 1,
+			train_loss.result(),
+			train_accuracy.result() * 100,
+			test_loss.result(),
+			test_accuracy.result() * 100
+		)
+	)
+
+	# Save checkpoint of model weights
+	model.save_weights(checkpoint_path.format(epoch=epoch))
 
 	# Reset the metrics for the next epoch
 	train_loss.reset_states()
